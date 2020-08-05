@@ -11,9 +11,9 @@ def get_connection():
     return engine
 
 
-def get_sqlachemy_session():
-    Session = sessionmaker(bind=get_connection())
-    session = Session()
+def get_sqlalchemy_session():
+    sqlalchemy_session = sessionmaker(bind=get_connection())
+    session = sqlalchemy_session()
     return session
 
 
