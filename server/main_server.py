@@ -10,14 +10,14 @@ from entities.user_model import User
 
 # При старте сервера создаются потоки с экземплярами ботов
 def main():
-    first_bot_thread = threading.Thread(target=bots.TelegramBot)
-    second_bot_thread = threading.Thread(target=bots.VKBot)
+    telegram_bot_thread = threading.Thread(target=bots.TelegramBot)
+    vk_bot_thread = threading.Thread(target=bots.VKBot)
 
-    first_bot_thread.start()
-    second_bot_thread.start()
+    telegram_bot_thread.start()
+    vk_bot_thread.start()
 
-    first_bot_thread.join()
-    second_bot_thread.join()
+    telegram_bot_thread.join()
+    vk_bot_thread.join()
 
 
 # Метод get_answer_from_server возвращает ответ на сообщение пользователя
@@ -45,31 +45,15 @@ def get_answer_from_server(new_mes, user_id, type_of_messenger):
 def is_user_new(user_id, type_of_messenger):
     session = data_base.get_sqlalchemy_session()
     rows = session.query(User.id_teleg, User.id_vk)
-
-    i = 0
-    rowcount = rows.count()
-
+    for row in rows:
+        if list(filter((lambda x: x == user_id), row)):
+            return constants.STR_START_AGAIN
     if type_of_messenger == constants.VK_MESSENGER['messenger_name']:
-        for row in rows:
-            if row.id_vk != user_id:
-                i += 1
-            # Если совпадений не нашлось (rowcount == i) , то пользователь новый: возвращаем True и записываем в БД
-            if rowcount - i == 0:
-                session.add(User(id_vk=user_id, ready_to_change='false'))
-                session.commit()
-                return constants.STR_NEW_USER
-
+        session.add(User(id_vk=user_id, ready_to_change='false'))
     elif type_of_messenger == constants.TELEGRAM_MESSENGER['messenger_name']:
-        for row in rows:
-            if row.id_teleg != user_id:
-                i += 1
-            # Если совпадений не нашлось (rowcount == i) , то пользователь новый: возвращаем True и записываем в БД
-            if rowcount - i == 0:
-                session.add(User(id_teleg=user_id, ready_to_change='false'))
-                session.commit()
-                return constants.STR_NEW_USER
-    # Если id уже есть в базе, и пользователь просто так написал /start, то возвращаем False
-    return constants.STR_START_AGAIN
+        session.add(User(id_teleg=user_id, ready_to_change='false'))
+    session.commit()
+    return constants.STR_NEW_USER
 
 
 # Функция проверяет, есть ли необходимость смены платформы при вводе цифр
@@ -77,13 +61,13 @@ def check_in_db_ready_to_change(new_mes, user_id, type_of_messenger):
     session = data_base.get_sqlalchemy_session()
     for row in session.query(User.ready_to_change).filter(or_(User.id_vk == user_id, User.id_teleg == user_id)):
         if row.ready_to_change == 'true':
-            return change_platform(new_mes, user_id, type_of_messenger)
+            return try_to_change_platform(new_mes, user_id, type_of_messenger)
     return constants.STR_NO_ANSWER
 
 
 # Метод проверяет возможность для смены канала: если имеется нужный id - отправляет сообщение и меняет канал,
 # если нет id, то просит его ввести.
-def change_platform(new_mes, userd_id, type_of_messenger):
+def try_to_change_platform(new_mes, userd_id, type_of_messenger):
     session = data_base.get_sqlalchemy_session()
     for row in session.query(User).filter(or_(User.id_vk == userd_id, User.id_teleg == userd_id)):
         # защита от дурака: пользователь был в том же мессенджере, который выбрал
