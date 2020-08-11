@@ -43,7 +43,6 @@ class VKBot(BotEntity):
 
     def __init__(self):
         longpoll = VkLongPoll(self.vk_session)
-        vk = self.vk_session.get_api()
         for event in longpoll.listen():
             if event.type == VkEventType.MESSAGE_NEW:
                 if event.to_me:
@@ -52,8 +51,9 @@ class VKBot(BotEntity):
 
                     # отправляем сообщение, id, тип платформы серверу на обработку
                     answer = server.get_answer_from_server(new_message_from_user, id, VK_MESSENGER['messenger_name'])
-                    self.vk_session.method('messages.send', {'user_id': id, 'message': answer, 'random_id': 0,
-                                                             'keyboard': keyboard.get_keyboard()})
+                    self.vk_session.method('messages.send',
+                                           {'user_id': id, 'message': answer, 'random_id': 0,
+                                            'keyboard': keyboard.get_keyboard()})
 
     def send_mes_in_new_platform(self, user_id):
         self.vk_session.method('messages.send',
